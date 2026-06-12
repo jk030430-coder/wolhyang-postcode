@@ -5,20 +5,26 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 </head>
 <body style="height:100%;margin:0;padding:0;overflow:hidden;background:#fff">
+<div id="dbg" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#ffe;padding:8px;font:12px monospace;color:#333;border-bottom:2px solid #cc0;max-height:50%;overflow:auto">v3 loading...</div>
 <div id="layer" style="width:100%;height:100%"></div>
-<div id="dbg" style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#ffe;padding:6px;font:11px monospace;color:#333;border-top:2px solid #cc0"></div>
-<script src="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <script>
 var dbg=document.getElementById('dbg');
 function log(m){dbg.innerHTML+=m+'<br>';}
+log('innerH='+window.innerHeight+' clientH='+document.documentElement.clientHeight);
+</script>
+<script src="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
+    onload="log('SDK loaded')"
+    onerror="log('SDK FAILED')">
+</script>
+<script>
 var attempt=0;
 function initPostcode(){
     attempt++;
     var h=window.innerHeight||document.documentElement.clientHeight||document.body.clientHeight||0;
     var w=window.innerWidth||document.documentElement.clientWidth||document.body.clientWidth||0;
-    log('try#'+attempt+' w='+w+' h='+h);
+    log('#'+attempt+' w='+w+' h='+h);
     if(h<50&&attempt<20){
-        setTimeout(initPostcode,200);
+        setTimeout(initPostcode,300);
         return;
     }
     if(h<50) h=600;
@@ -26,42 +32,40 @@ function initPostcode(){
     try{
         var P=(typeof kakao!=='undefined'&&kakao.Postcode)?kakao.Postcode
               :(typeof daum!=='undefined'&&daum.Postcode)?daum.Postcode:null;
-        log('P='+(P?'found':'null'));
+        log('P='+(P?'YES':'NO'));
         if(P){
             var layer=document.getElementById('layer');
             layer.style.width=w+'px';
             layer.style.height=h+'px';
-            log('layer set to '+w+'x'+h);
-            dbg.style.display='none';
             new P({
                 oncomplete:function(data){
                     var addr=data.userSelectedType==='R'?data.roadAddress:data.jibunAddress;
                     if(window.Android){Android.onAddressSelected(data.zonecode,addr);}
                 },
-                onclose:function(){
-                    if(window.Android){Android.onClosed();}
-                },
                 width:w,
                 height:h
             }).embed(layer);
+            log('embed called');
             setTimeout(function(){
-                var iframes=layer.getElementsByTagName('iframe');
-                for(var i=0;i<iframes.length;i++){
-                    iframes[i].style.width=w+'px';
-                    iframes[i].style.height=h+'px';
-                    iframes[i].style.border='none';
-                    log('iframe forced to '+w+'x'+h+' src='+(iframes[i].src||'?').substring(0,40));
+                var f=layer.querySelector('iframe');
+                if(f){
+                    log('iframe src='+(f.src||'?').substring(0,50));
+                    log('iframe size='+f.offsetWidth+'x'+f.offsetHeight);
+                    f.style.width=w+'px';
+                    f.style.height=h+'px';
+                    f.style.border='none';
+                    log('iframe forced '+w+'x'+h);
+                    log('iframe after='+f.offsetWidth+'x'+f.offsetHeight);
+                } else {
+                    log('NO iframe found');
                 }
-                dbg.style.display='block';
-            },500);
+            },1000);
             if(window.Android){Android.onReady();}
         } else {
-            log('NO Postcode class');
-            if(window.Android){Android.onError('Postcode API not loaded');}
+            log('Postcode class NOT found');
         }
     }catch(e){
         log('ERR:'+e.message);
-        if(window.Android){Android.onError(e.message);}
     }
 }
 initPostcode();
