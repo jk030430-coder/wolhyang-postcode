@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html style="height:100%;margin:0">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:-apple-system,sans-serif;background:#f9f9f9;padding-bottom:80px}
+        #payment-method,#agreement{width:100%}
+        .btn-wrap{position:fixed;bottom:0;left:0;right:0;padding:12px 16px;background:#fff;border-top:1px solid #e5e5e5;z-index:100}
+        #pay-btn{width:100%;padding:16px;background:#3182f6;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer}
+        #pay-btn:disabled{background:#b0b8c1}
+        .loading{text-align:center;padding:60px 20px;color:#888;font-size:15px}
+        .error{text-align:center;padding:40px 20px;color:#e53935;font-size:14px}
+    </style>
+</head>
+<body>
+<div id="loading" class="loading">결제 수단을 불러오는 중...</div>
+<div id="payment-method"></div>
+<div id="agreement"></div>
+<div class="btn-wrap">
+    <button id="pay-btn" disabled>결제하기</button>
+</div>
+<script src="https://js.tosspayments.com/v1/payment-widget"></script>
+<script>
+var params=new URLSearchParams(location.search);
+var amount=parseInt(params.get('amount'))||0;
+var orderId=params.get('orderId')||'WH-'+Date.now();
+var orderName=decodeURIComponent(params.get('orderName')||'월향 주문');
+var customerName=decodeURIComponent(params.get('customerName')||'');
+var clientKey='test_ck_D5GePWvyJnrK0W0k6q8gmeYX7owd';
+
+try{
+    var widget=PaymentWidget(clientKey,PaymentWidget.ANONYMOUS);
+    widget.renderPaymentMethods('#payment-method',{value:amount});
+    widget.renderAgreement('#agreement');
+    setTimeout(function(){
+        document.getElementById('loading').style.display='none';
+        document.getElementById('pay-btn').disabled=false;
+        document.getElementById('pay-btn').textContent=amount.toLocaleString()+'원 결제하기';
+        if(window.Android) Android.onReady();
+    },1500);
+
+    document.getElementById('pay-btn').addEventListener('click',function(){
+        var btn=this;
+        btn.disabled=true;
+        btn.textContent='처리 중...';
+        widget.requestPayment({
+            orderId:orderId,
+            orderName:orderName,
+            customerName:customerName||undefined,
+            successUrl:'https://jk030430-coder.github.io/wolhyang-postcode/payment-success?v=1',
+            failUrl:'https://jk030430-coder.github.io/wolhyang-postcode/payment-fail?v=1'
+        }).catch(function(err){
+            btn.disabled=false;
+            btn.textContent=amount.toLocaleString()+'원 결제하기';
+            if(err.code==='USER_CANCEL') return;
+            if(window.Android) Android.onPaymentFail(err.code||'UNKNOWN',err.message||'결제 실패');
+        });
+    });
+}catch(e){
+    document.getElementById('loading').innerHTML='<div class="error">결제 모듈 로드 실패<br>'+e.message+'</div>';
+    if(window.Android) Android.onPaymentFail('INIT_ERROR',e.message);
+}
+</script>
+</body>
+</html>
