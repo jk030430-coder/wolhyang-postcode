@@ -11,17 +11,26 @@
         #pay-btn{width:100%;padding:16px;background:#3182f6;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer}
         #pay-btn:disabled{background:#b0b8c1}
         .loading{text-align:center;padding:60px 20px;color:#888;font-size:15px}
-        .error{text-align:center;padding:40px 20px;color:#e53935;font-size:14px}
+        #dbg{position:fixed;top:0;left:0;right:0;z-index:99999;background:#ffe;padding:8px;font:11px monospace;color:#333;border-bottom:2px solid #cc0;max-height:40%;overflow:auto}
     </style>
 </head>
 <body>
+<div id="dbg">payment v2 loading...</div>
 <div id="loading" class="loading">결제 수단을 불러오는 중...</div>
 <div id="payment-method"></div>
 <div id="agreement"></div>
 <div class="btn-wrap">
     <button id="pay-btn" disabled>결제하기</button>
 </div>
-<script src="https://js.tosspayments.com/v1/payment-widget"></script>
+<script>
+var dbg=document.getElementById('dbg');
+function log(m){dbg.innerHTML+=m+'<br>';}
+log('innerH='+window.innerHeight);
+</script>
+<script src="https://js.tosspayments.com/v1/payment-widget"
+    onload="log('SDK loaded')"
+    onerror="log('SDK FAILED')">
+</script>
 <script>
 var params=new URLSearchParams(location.search);
 var amount=parseInt(params.get('amount'))||0;
@@ -30,16 +39,37 @@ var orderName=decodeURIComponent(params.get('orderName')||'월향 주문');
 var customerName=decodeURIComponent(params.get('customerName')||'');
 var clientKey='test_ck_D5GePWvyJnrK0W0k6q8gmeYX7owd';
 
+log('amount='+amount+' orderId='+orderId);
+log('PaymentWidget='+(typeof PaymentWidget));
+
 try{
     var widget=PaymentWidget(clientKey,PaymentWidget.ANONYMOUS);
+    log('widget created');
     widget.renderPaymentMethods('#payment-method',{value:amount});
     widget.renderAgreement('#agreement');
+    log('render called');
+
     setTimeout(function(){
+        var pm=document.getElementById('payment-method');
+        var ag=document.getElementById('agreement');
+        log('pm children='+pm.children.length+' h='+pm.offsetHeight);
+        log('ag children='+ag.children.length+' h='+ag.offsetHeight);
+        if(pm.children.length>0){
+            var child=pm.children[0];
+            log('pm child tag='+child.tagName+' h='+child.offsetHeight);
+            if(child.tagName==='IFRAME'){
+                log('iframe src='+(child.src||'?').substring(0,60));
+                var h=window.innerHeight-150;
+                child.style.height=h+'px';
+                child.style.minHeight='400px';
+                log('iframe forced h='+h);
+            }
+        }
         document.getElementById('loading').style.display='none';
         document.getElementById('pay-btn').disabled=false;
         document.getElementById('pay-btn').textContent=amount.toLocaleString()+'원 결제하기';
         if(window.Android) Android.onReady();
-    },1500);
+    },2000);
 
     document.getElementById('pay-btn').addEventListener('click',function(){
         var btn=this;
@@ -59,7 +89,7 @@ try{
         });
     });
 }catch(e){
-    document.getElementById('loading').innerHTML='<div class="error">결제 모듈 로드 실패<br>'+e.message+'</div>';
+    log('ERR:'+e.message);
     if(window.Android) Android.onPaymentFail('INIT_ERROR',e.message);
 }
 </script>
