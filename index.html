@@ -1,52 +1,70 @@
 <!DOCTYPE html>
-<html>
+<html style="height:100%;margin:0">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        html,body{width:100%;height:100%;overflow:hidden;background:#fff}
-        #layer{width:100%;height:100%}
-    </style>
 </head>
-<body>
-<div id="layer"></div>
+<body style="height:100%;margin:0;padding:0;overflow:hidden;background:#fff">
+<div id="layer" style="width:100%;height:100%"></div>
+<div id="dbg" style="position:fixed;bottom:0;left:0;right:0;z-index:99999;background:#ffe;padding:6px;font:11px monospace;color:#333;border-top:2px solid #cc0"></div>
 <script src="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <script>
-try {
-    var P = (typeof kakao !== 'undefined' && kakao.Postcode) ? kakao.Postcode
-          : (typeof daum !== 'undefined' && daum.Postcode) ? daum.Postcode : null;
-    if (P) {
-        var h = window.innerHeight || document.documentElement.clientHeight || 500;
-        var w = window.innerWidth || document.documentElement.clientWidth || 360;
-        var layer = document.getElementById('layer');
-        layer.style.width = w + 'px';
-        layer.style.height = h + 'px';
-        new P({
-            oncomplete: function(data) {
-                var addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
-                if (window.Android) { Android.onAddressSelected(data.zonecode, addr); }
-            },
-            onclose: function() {
-                if (window.Android) { Android.onClosed(); }
-            },
-            width: w,
-            height: h
-        }).embed(layer);
-        setTimeout(function() {
-            var iframe = layer.querySelector('iframe');
-            if (iframe) {
-                iframe.style.width = w + 'px';
-                iframe.style.height = h + 'px';
-            }
-        }, 300);
-        if (window.Android) { Android.onReady(); }
-    } else {
-        if (window.Android) { Android.onError('Postcode class not found'); }
+var dbg=document.getElementById('dbg');
+function log(m){dbg.innerHTML+=m+'<br>';}
+var attempt=0;
+function initPostcode(){
+    attempt++;
+    var h=window.innerHeight||document.documentElement.clientHeight||document.body.clientHeight||0;
+    var w=window.innerWidth||document.documentElement.clientWidth||document.body.clientWidth||0;
+    log('try#'+attempt+' w='+w+' h='+h);
+    if(h<50&&attempt<20){
+        setTimeout(initPostcode,200);
+        return;
     }
-} catch(e) {
-    if (window.Android) { Android.onError(e.message); }
+    if(h<50) h=600;
+    if(w<50) w=360;
+    try{
+        var P=(typeof kakao!=='undefined'&&kakao.Postcode)?kakao.Postcode
+              :(typeof daum!=='undefined'&&daum.Postcode)?daum.Postcode:null;
+        log('P='+(P?'found':'null'));
+        if(P){
+            var layer=document.getElementById('layer');
+            layer.style.width=w+'px';
+            layer.style.height=h+'px';
+            log('layer set to '+w+'x'+h);
+            dbg.style.display='none';
+            new P({
+                oncomplete:function(data){
+                    var addr=data.userSelectedType==='R'?data.roadAddress:data.jibunAddress;
+                    if(window.Android){Android.onAddressSelected(data.zonecode,addr);}
+                },
+                onclose:function(){
+                    if(window.Android){Android.onClosed();}
+                },
+                width:w,
+                height:h
+            }).embed(layer);
+            setTimeout(function(){
+                var iframes=layer.getElementsByTagName('iframe');
+                for(var i=0;i<iframes.length;i++){
+                    iframes[i].style.width=w+'px';
+                    iframes[i].style.height=h+'px';
+                    iframes[i].style.border='none';
+                    log('iframe forced to '+w+'x'+h+' src='+(iframes[i].src||'?').substring(0,40));
+                }
+                dbg.style.display='block';
+            },500);
+            if(window.Android){Android.onReady();}
+        } else {
+            log('NO Postcode class');
+            if(window.Android){Android.onError('Postcode API not loaded');}
+        }
+    }catch(e){
+        log('ERR:'+e.message);
+        if(window.Android){Android.onError(e.message);}
+    }
 }
+initPostcode();
 </script>
 </body>
 </html>
