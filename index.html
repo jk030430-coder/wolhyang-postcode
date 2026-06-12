@@ -28,7 +28,7 @@ function initPostcode(){
             layer.style.height=h+'px';
             new P({
                 oncomplete:function(data){
-                    var addr=data.userSelectedType==='R'?data.roadAddress:data.jibunAddress;
+                    var addr=data.roadAddress||data.jibunAddress;
                     if(window.Android){Android.onAddressSelected(data.zonecode,addr);}
                 },
                 width:w,
