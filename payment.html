@@ -5,91 +5,47 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
     <style>
         *{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:-apple-system,sans-serif;background:#f9f9f9;padding-bottom:80px}
-        #payment-method,#agreement{width:100%}
-        .btn-wrap{position:fixed;bottom:0;left:0;right:0;padding:12px 16px;background:#fff;border-top:1px solid #e5e5e5;z-index:100}
-        #pay-btn{width:100%;padding:16px;background:#3182f6;color:#fff;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer}
-        #pay-btn:disabled{background:#b0b8c1}
-        .loading{text-align:center;padding:60px 20px;color:#888;font-size:15px}
-        #dbg{position:fixed;top:0;left:0;right:0;z-index:99999;background:#ffe;padding:8px;font:11px monospace;color:#333;border-bottom:2px solid #cc0;max-height:40%;overflow:auto}
+        body{display:flex;justify-content:center;align-items:center;height:100%;margin:0;background:#fff;font-family:-apple-system,sans-serif}
+        .loading{text-align:center;color:#666;font-size:15px}
+        .loading .spinner{width:36px;height:36px;border:3px solid #e5e5e5;border-top-color:#3182f6;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+        @keyframes spin{to{transform:rotate(360deg)}}
+        .error{text-align:center;padding:40px;color:#e53935;font-size:14px}
     </style>
 </head>
 <body>
-<div id="dbg">payment v2 loading...</div>
-<div id="loading" class="loading">결제 수단을 불러오는 중...</div>
-<div id="payment-method"></div>
-<div id="agreement"></div>
-<div class="btn-wrap">
-    <button id="pay-btn" disabled>결제하기</button>
+<div id="status" class="loading">
+    <div class="spinner"></div>
+    결제 페이지로 이동 중...
 </div>
-<script>
-var dbg=document.getElementById('dbg');
-function log(m){dbg.innerHTML+=m+'<br>';}
-log('innerH='+window.innerHeight);
-</script>
-<script src="https://js.tosspayments.com/v1/payment-widget"
-    onload="log('SDK loaded')"
-    onerror="log('SDK FAILED')">
-</script>
+<script src="https://js.tosspayments.com/v1"></script>
 <script>
 var params=new URLSearchParams(location.search);
 var amount=parseInt(params.get('amount'))||0;
 var orderId=params.get('orderId')||'WH-'+Date.now();
 var orderName=decodeURIComponent(params.get('orderName')||'월향 주문');
+var method=decodeURIComponent(params.get('method')||'카드');
 var customerName=decodeURIComponent(params.get('customerName')||'');
 var clientKey='test_ck_D5GePWvyJnrK0W0k6q8gmeYX7owd';
 
-log('amount='+amount+' orderId='+orderId);
-log('PaymentWidget='+(typeof PaymentWidget));
-
 try{
-    var widget=PaymentWidget(clientKey,PaymentWidget.ANONYMOUS);
-    log('widget created');
-    widget.renderPaymentMethods('#payment-method',{value:amount});
-    widget.renderAgreement('#agreement');
-    log('render called');
-
-    setTimeout(function(){
-        var pm=document.getElementById('payment-method');
-        var ag=document.getElementById('agreement');
-        log('pm children='+pm.children.length+' h='+pm.offsetHeight);
-        log('ag children='+ag.children.length+' h='+ag.offsetHeight);
-        if(pm.children.length>0){
-            var child=pm.children[0];
-            log('pm child tag='+child.tagName+' h='+child.offsetHeight);
-            if(child.tagName==='IFRAME'){
-                log('iframe src='+(child.src||'?').substring(0,60));
-                var h=window.innerHeight-150;
-                child.style.height=h+'px';
-                child.style.minHeight='400px';
-                log('iframe forced h='+h);
-            }
+    var tossPayments=TossPayments(clientKey);
+    tossPayments.requestPayment(method,{
+        amount:amount,
+        orderId:orderId,
+        orderName:orderName,
+        customerName:customerName||undefined,
+        successUrl:'https://jk030430-coder.github.io/wolhyang-postcode/payment-success',
+        failUrl:'https://jk030430-coder.github.io/wolhyang-postcode/payment-fail'
+    }).catch(function(err){
+        if(err.code==='USER_CANCEL'){
+            if(window.Android) Android.onPaymentFail('USER_CANCEL','사용자 취소');
+            return;
         }
-        document.getElementById('loading').style.display='none';
-        document.getElementById('pay-btn').disabled=false;
-        document.getElementById('pay-btn').textContent=amount.toLocaleString()+'원 결제하기';
-        if(window.Android) Android.onReady();
-    },2000);
-
-    document.getElementById('pay-btn').addEventListener('click',function(){
-        var btn=this;
-        btn.disabled=true;
-        btn.textContent='처리 중...';
-        widget.requestPayment({
-            orderId:orderId,
-            orderName:orderName,
-            customerName:customerName||undefined,
-            successUrl:'https://jk030430-coder.github.io/wolhyang-postcode/payment-success?v=1',
-            failUrl:'https://jk030430-coder.github.io/wolhyang-postcode/payment-fail?v=1'
-        }).catch(function(err){
-            btn.disabled=false;
-            btn.textContent=amount.toLocaleString()+'원 결제하기';
-            if(err.code==='USER_CANCEL') return;
-            if(window.Android) Android.onPaymentFail(err.code||'UNKNOWN',err.message||'결제 실패');
-        });
+        document.getElementById('status').innerHTML='<div class="error">'+( err.message||'결제 실패')+'</div>';
+        if(window.Android) Android.onPaymentFail(err.code||'UNKNOWN',err.message||'결제 실패');
     });
 }catch(e){
-    log('ERR:'+e.message);
+    document.getElementById('status').innerHTML='<div class="error">결제 모듈 오류: '+e.message+'</div>';
     if(window.Android) Android.onPaymentFail('INIT_ERROR',e.message);
 }
 </script>
