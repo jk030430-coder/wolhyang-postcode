@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box}
+        html,body{width:100%;height:100%;overflow:hidden;background:#fff}
+        #layer{width:100%;height:100%}
+    </style>
+</head>
+<body>
+<div id="layer"></div>
+<script src="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script>
+try {
+    var P = (typeof kakao !== 'undefined' && kakao.Postcode) ? kakao.Postcode
+          : (typeof daum !== 'undefined' && daum.Postcode) ? daum.Postcode : null;
+    if (P) {
+        new P({
+            oncomplete: function(data) {
+                var addr = data.userSelectedType === 'R' ? data.roadAddress : data.jibunAddress;
+                if (window.Android) {
+                    Android.onAddressSelected(data.zonecode, addr);
+                }
+            },
+            width: '100%',
+            height: '100%'
+        }).embed(document.getElementById('layer'));
+        if (window.Android) {
+            Android.onReady();
+        }
+    }
+} catch(e) {
+    if (window.Android) {
+        Android.onError(e.message);
+    }
+}
+</script>
+</body>
+</html>
