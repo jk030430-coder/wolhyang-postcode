@@ -5,24 +5,14 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
 </head>
 <body style="height:100%;margin:0;padding:0;overflow:hidden;background:#fff">
-<div id="dbg" style="position:fixed;top:0;left:0;right:0;z-index:99999;background:#ffe;padding:8px;font:12px monospace;color:#333;border-bottom:2px solid #cc0;max-height:50%;overflow:auto">v3 loading...</div>
 <div id="layer" style="width:100%;height:100%"></div>
-<script>
-var dbg=document.getElementById('dbg');
-function log(m){dbg.innerHTML+=m+'<br>';}
-log('innerH='+window.innerHeight+' clientH='+document.documentElement.clientHeight);
-</script>
-<script src="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"
-    onload="log('SDK loaded')"
-    onerror="log('SDK FAILED')">
-</script>
+<script src="https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
 <script>
 var attempt=0;
 function initPostcode(){
     attempt++;
     var h=window.innerHeight||document.documentElement.clientHeight||document.body.clientHeight||0;
     var w=window.innerWidth||document.documentElement.clientWidth||document.body.clientWidth||0;
-    log('#'+attempt+' w='+w+' h='+h);
     if(h<50&&attempt<20){
         setTimeout(initPostcode,300);
         return;
@@ -32,7 +22,6 @@ function initPostcode(){
     try{
         var P=(typeof kakao!=='undefined'&&kakao.Postcode)?kakao.Postcode
               :(typeof daum!=='undefined'&&daum.Postcode)?daum.Postcode:null;
-        log('P='+(P?'YES':'NO'));
         if(P){
             var layer=document.getElementById('layer');
             layer.style.width=w+'px';
@@ -45,27 +34,20 @@ function initPostcode(){
                 width:w,
                 height:h
             }).embed(layer);
-            log('embed called');
             setTimeout(function(){
                 var f=layer.querySelector('iframe');
                 if(f){
-                    log('iframe src='+(f.src||'?').substring(0,50));
-                    log('iframe size='+f.offsetWidth+'x'+f.offsetHeight);
                     f.style.width=w+'px';
                     f.style.height=h+'px';
                     f.style.border='none';
-                    log('iframe forced '+w+'x'+h);
-                    log('iframe after='+f.offsetWidth+'x'+f.offsetHeight);
-                } else {
-                    log('NO iframe found');
                 }
             },1000);
             if(window.Android){Android.onReady();}
         } else {
-            log('Postcode class NOT found');
+            if(window.Android){Android.onError('Postcode API not loaded');}
         }
     }catch(e){
-        log('ERR:'+e.message);
+        if(window.Android){Android.onError(e.message);}
     }
 }
 initPostcode();
